@@ -1,0 +1,18 @@
+[package]
+name = "connected-papers"
+authors = ["tangxiangong <tangxiangong@gmail.com>"]
+version = "0.1.0"
+edition = "2024"
+description = "A Rust client for Connected Papers integrated with Semantic Scholar utilities."
+repository = "https://github.com/tangxiangong/connected-papers"
+license = "MIT or APACHE-2.0"
+readme = "README.md"
+
+[dependencies]
+reqwest = { version = "0.12", default-features = false, features = [
+    "charset",
+    "rustls-tls",
+] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
