@@ -1,8 +1,10 @@
-use std::time::Duration;
-
 use crate::error::Result;
 use reqwest::{Client, RequestBuilder};
 use serde::Deserialize;
+use std::time::Duration;
+
+static APP_USER_AGENT: &str =
+    concat!("RS", env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
 #[derive(Debug)]
 pub struct SemanticScholar {
@@ -16,6 +18,7 @@ impl Default for SemanticScholar {
             api_key: None,
             client: Client::builder()
                 .timeout(Duration::from_secs(30))
+                .user_agent(APP_USER_AGENT)
                 .build()
                 .unwrap(),
         }
