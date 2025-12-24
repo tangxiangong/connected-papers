@@ -4,6 +4,7 @@ use crate::{
 };
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize, Serializer};
+use std::collections::HashMap;
 
 const BASE_URL: &str = "https://api.semanticscholar.org/graph/v1";
 
@@ -21,11 +22,13 @@ pub struct AutoCompleteParam {
     pub query: String,
 }
 
+/// Response for autocomplete query
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct AutoCompleteResponse {
     pub matches: Vec<AutoCompletePaper>,
 }
 
+/// Inner struct for autocomplete query
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AutoCompletePaper {
@@ -38,6 +41,7 @@ pub struct AutoCompletePaper {
 }
 
 impl AutoCompletePaper {
+    /// Get the authors of the paper
     pub fn authors(&self) -> String {
         self.authors_year
             .split(",")
@@ -46,6 +50,7 @@ impl AutoCompletePaper {
             .to_string()
     }
 
+    /// Get the year of the paper
     pub fn year(&self) -> Option<u32> {
         self.authors_year
             .split(",")
@@ -60,54 +65,27 @@ impl Query for AutoCompleteParam {
     async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
         let url = format!("{}/paper/autocomplete", BASE_URL);
         let req_builder = build_request(client, Method::Get, &url);
-        let resp = req_builder.query(self).send().await?;
-        let res = match resp.status() {
-            StatusCode::OK => resp.json::<AutoCompleteResponse>().await?,
-            _ => {
-                return Err(RequestFailedError {
-                    error: resp.text().await?,
-                }
-                .into());
-            }
-        };
-        Ok(res.matches)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct BatchDetailQueryParam(pub Vec<PaperId>, pub Option<Vec<PaperField>>);
-
-impl Query for BatchDetailQueryParam {
-    type Response = reqwest::Response;
-
-    async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
-        let paper_ids = PaperIds {
-            ids: self.0.clone(),
-        };
-        let url = if let Some(ref fields) = self.1
-            && !fields.is_empty()
-        {
-            format!(
-                "{}/paper/batch?fields={}",
-                BASE_URL,
-                merge_paper_fields(fields)
-            )
-        } else {
-            format!("{}/paper/batch", BASE_URL)
-        };
-        let req_builder = build_request(client, Method::Post, &url);
-
-        let resp = req_builder.json(&paper_ids).send().await?;
-        match resp.status() {
-            StatusCode::OK => Ok(resp),
+        let res = req_builder.query(self).send().await?;
+        match res.status() {
+            StatusCode::OK => Ok(res.json::<AutoCompleteResponse>().await?.matches),
             _ => Err(RequestFailedError {
-                error: resp.text().await?,
+                error: res.text().await?,
             }
             .into()),
         }
-        // TODO: parse the response
     }
 }
+
+/// Get details for multiple papers at once.
+///
+/// `POST /paper/batch`
+///
+/// ## Limitations
+/// - Can only process 500 paper ids at a time.
+/// - Can only return up to 10 MB of data at a time.
+/// - Can only return up to 9999 citations at a time.
+#[derive(Debug, Clone)]
+pub struct BatchDetailQueryParam(pub Vec<PaperId>, pub Option<Vec<PaperField>>);
 
 #[derive(Debug, Clone, Serialize)]
 struct PaperIds {
@@ -276,6 +254,329 @@ fn merge_paper_fields(fields: &[PaperField]) -> String {
         .map(|f| f.to_string())
         .collect::<Vec<String>>()
         .join(",")
+}
+
+/// Inner info for batch detail query
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PaperDetail {
+    /// Semantic Scholar's primary unique identifier for a paper.
+    pub paper_id: String,
+    /// Semantic Scholar's secondary unique identifier for a paper.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub corpus_id: Option<u64>,
+    /// An object that contains the paper's unique identifiers in external sources.
+    /// The external sources are limited to: ArXiv, MAG, ACL, PubMed, Medline, PubMedCentral, DBLP, and DOI.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_ids: Option<ExternalIds>,
+    /// URL of the paper on the Semantic Scholar website.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Title of the paper.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// The paper's abstract. Note that due to legal reasons, this may be missing even if we display an abstract on the website.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "abstract")]
+    pub abstract_: Option<String>,
+    /// The name of the paper's publication venue.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub venue: Option<String>,
+    /// An object that contains the following information about the journal or
+    /// conference in which this paper was published: id (the venue's unique ID),
+    /// name (the venue's name), type (the type of venue), alternate_names (an array
+    /// of alternate names for the venue), and url (the venue's website).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication_venue: Option<PublicationVenue>,
+    /// The year the paper was published.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub year: Option<u32>,
+    /// The total number of papers this paper references.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reference_count: Option<u32>,
+    /// The total number of papers that references this paper.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub citation_count: Option<u32>,
+    /// A subset of the citation count, where the cited publication has a significant
+    /// impact on the citing publication. Determined by Semantic Scholar's algorithm:
+    /// https://www.semanticscholar.org/faq#influential-citations.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub influential_citation_count: Option<u32>,
+    /// Whether the paper is open access. More information here: https://www.openaccess.nl/en/what-is-open-access.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_open_access: Option<bool>,
+    /// An object that contains the following parameters: url (a link to the paper's
+    /// PDF), status (the type of open access https://en.wikipedia.org/wiki/Open_access#Colour_naming_system), the paper's license, and a legal disclaimer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub open_access_pdf: Option<OpenAccessPdf>,
+    /// A list of the paper's high-level academic categories from external sources.
+    /// The possible fields are: Computer Science, Medicine, Chemistry, Biology,
+    /// Materials Science, Physics, Geology, Psychology, Art, History, Geography,
+    /// Sociology, Business, Political Science, Economics, Philosophy,
+    /// Mathematics, Engineering, Environmental Science, Agricultural and
+    /// Food Sciences, Education, Law, and Linguistics.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fields_of_study: Option<Vec<String>>,
+    /// An array of objects. Each object contains the following parameters: category (a field of study. The possible fields are the same as in fieldsOfStudy), and source (specifies whether the category was classified by Semantic Scholar or by an external source. More information on how Semantic Scholar classifies papers https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub s2_fields_of_study: Option<Vec<S2FieldsOfStudy>>,
+    /// The type of this publication.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication_types: Option<Vec<String>>,
+    /// The date when this paper was published, in YYYY-MM-DD format.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication_date: Option<String>,
+    /// An object that contains the following parameters, if available: name (the journal name), volume (the journal’s volume number), and pages (the page number range).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub journal: Option<Journal>,
+    /// The BibTex bibliographical citation of the paper.
+    // TODO: verify the format of the citation styles.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub citation_styles: Option<HashMap<String, String>>,
+    /// Array of authors info.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authors: Option<Vec<Author>>,
+    /// Array of papers that cite this paper.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub citations: Option<Vec<AssociatedPaper>>,
+    /// Array of papers that this paper cites.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub references: Option<Vec<AssociatedPaper>>,
+    // TODO: embedding, tldr
+    /// fulltext, abstract, or none, based on what we have available for this paper.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_availability: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssociatedPaper {
+    /// Semantic Scholar's primary unique identifier for a paper.
+    pub paper_id: String,
+    /// Semantic Scholar's secondary unique identifier for a paper.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub corpus_id: Option<u64>,
+    /// An object that contains the paper's unique identifiers in external sources.
+    /// The external sources are limited to: ArXiv, MAG, ACL, PubMed, Medline, PubMedCentral, DBLP, and DOI.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_ids: Option<ExternalIds>,
+    /// URL of the paper on the Semantic Scholar website.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Title of the paper.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// The paper's abstract. Note that due to legal reasons, this may be missing even if we display an abstract on the website.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "abstract")]
+    pub abstract_: Option<String>,
+    /// The name of the paper's publication venue.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub venue: Option<String>,
+    /// An object that contains the following information about the journal or
+    /// conference in which this paper was published: id (the venue's unique ID),
+    /// name (the venue's name), type (the type of venue), alternate_names (an array
+    /// of alternate names for the venue), and url (the venue's website).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication_venue: Option<PublicationVenue>,
+    /// The year the paper was published.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub year: Option<u32>,
+    /// The total number of papers this paper references.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reference_count: Option<u32>,
+    /// The total number of papers that references this paper.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub citation_count: Option<u32>,
+    /// A subset of the citation count, where the cited publication has a significant
+    /// impact on the citing publication. Determined by Semantic Scholar's algorithm:
+    /// https://www.semanticscholar.org/faq#influential-citations.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub influential_citation_count: Option<u32>,
+    /// Whether the paper is open access. More information here: https://www.openaccess.nl/en/what-is-open-access.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_open_access: Option<bool>,
+    /// An object that contains the following parameters: url (a link to the paper's
+    /// PDF), status (the type of open access https://en.wikipedia.org/wiki/Open_access#Colour_naming_system), the paper's license, and a legal disclaimer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub open_access_pdf: Option<OpenAccessPdf>,
+    /// A list of the paper's high-level academic categories from external sources.
+    /// The possible fields are: Computer Science, Medicine, Chemistry, Biology,
+    /// Materials Science, Physics, Geology, Psychology, Art, History, Geography,
+    /// Sociology, Business, Political Science, Economics, Philosophy,
+    /// Mathematics, Engineering, Environmental Science, Agricultural and
+    /// Food Sciences, Education, Law, and Linguistics.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fields_of_study: Option<Vec<String>>,
+    /// An array of objects. Each object contains the following parameters: category (a field of study. The possible fields are the same as in fieldsOfStudy), and source (specifies whether the category was classified by Semantic Scholar or by an external source. More information on how Semantic Scholar classifies papers https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub s2_fields_of_study: Option<Vec<S2FieldsOfStudy>>,
+    /// The type of this publication.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication_types: Option<Vec<String>>,
+    /// The date when this paper was published, in YYYY-MM-DD format.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication_date: Option<String>,
+    /// An object that contains the following parameters, if available: name (the journal name), volume (the journal’s volume number), and pages (the page number range).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub journal: Option<Journal>,
+    /// The BibTex bibliographical citation of the paper.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub citation_styles: Option<HashMap<String, String>>,
+    /// Array of authors info.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authors: Option<Vec<Author>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Author {
+    /// Semantic Scholar's unique ID for the author.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub author_id: Option<String>,
+    /// An object that contains the ORCID/DBLP IDs for the author, if known.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_ids: Option<AuthorExternalIds>,
+    /// URL of the author on the Semantic Scholar website.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Author's name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Array of organizational affiliations for the author.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub affiliations: Option<Vec<String>>,
+    /// The author’s homepage.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub homepage: Option<String>,
+    /// The author's total publications count.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paper_count: Option<String>,
+    /// The author's total citations count.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub citation_count: Option<String>,
+    /// The author’s h-index, which is a measure of the productivity and citation impact of the author’s publications: https://www.semanticscholar.org/faq#h-index.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub h_index: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub struct AuthorExternalIds {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub orcid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dblp: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Journal {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pages: Option<String>,
+}
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct S2FieldsOfStudy {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenAccessPdf {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legal_disclaimer: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicationVenue {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "type")]
+    pub type_: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alternate_names: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ExternalIds {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "CorpusId")]
+    pub corpus_id: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "ArXiv")]
+    pub arxiv: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "MAG")]
+    pub mag: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "ACL")]
+    pub acl: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "PubMed")]
+    pub pubmed: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "PubMedCentral")]
+    pub pubmed_central: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "DBLP")]
+    pub dblp: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "DOI")]
+    pub doi: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "Medline")]
+    pub medline: Option<String>,
+}
+
+impl Query for BatchDetailQueryParam {
+    type Response = Vec<PaperDetail>;
+
+    async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
+        let paper_ids = PaperIds {
+            ids: self.0.clone(),
+        };
+        let url = if let Some(ref fields) = self.1
+            && !fields.is_empty()
+        {
+            format!(
+                "{}/paper/batch?fields={}",
+                BASE_URL,
+                merge_paper_fields(fields)
+            )
+        } else {
+            format!("{}/paper/batch", BASE_URL)
+        };
+        let req_builder = build_request(client, Method::Post, &url);
+
+        let resp = req_builder.json(&paper_ids).send().await?;
+        match resp.status() {
+            StatusCode::OK => Ok(resp.json().await?),
+            _ => Err(RequestFailedError {
+                error: resp.text().await?,
+            }
+            .into()),
+        }
+    }
 }
 
 #[cfg(test)]
