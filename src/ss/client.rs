@@ -74,7 +74,6 @@ pub(crate) fn build_request(client: &SemanticScholar, method: Method, url: &str)
     req_builder
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum Method {
     Get,
