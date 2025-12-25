@@ -6,6 +6,8 @@ pub enum Error {
     SemanticScholarRequestFailed(#[from] crate::ss::client::RequestFailedError),
     #[error("{0}")]
     ReqwestError(String),
+    #[error("Invalid parameter: {0}")]
+    InvalidParameter(String),
 }
 
 impl From<reqwest::Error> for Error {

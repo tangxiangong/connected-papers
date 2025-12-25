@@ -1,97 +1,10 @@
-use crate::{
-    error::Result,
-    ss::client::{Method, Query, RequestFailedError, SemanticScholar, build_request},
-};
-use reqwest::StatusCode;
+//! Models for the Semantic Scholar Graph API
+//!
+
 use serde::{Deserialize, Serialize, Serializer};
-use std::collections::HashMap;
+use std::collections::HashSet;
 
-const BASE_URL: &str = "https://api.semanticscholar.org/graph/v1";
-
-/// Suggest paper query completions
-///
-/// To support interactive query-completion, return minimal information about papers
-/// matching a partial query.
-///
-/// `GET /paper/autocomplete`
-///
-/// Example: `https://api.semanticscholar.org/graph/v1/paper/autocomplete?query=semantic`
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct AutoCompleteParam {
-    /// Plain-text partial query string. Will be truncated to first 100 characters.
-    pub query: String,
-}
-
-/// Response for autocomplete query
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-pub struct AutoCompleteResponse {
-    pub matches: Vec<AutoCompletePaper>,
-}
-
-/// Inner struct for autocomplete query
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AutoCompletePaper {
-    /// The paper's primary unique identifier.
-    pub id: String,
-    /// Title of the paper.
-    pub title: String,
-    /// Summary of the authors and year of publication.
-    pub authors_year: String,
-}
-
-impl AutoCompletePaper {
-    /// Get the authors of the paper
-    pub fn authors(&self) -> String {
-        self.authors_year
-            .split(",")
-            .nth(0)
-            .unwrap_or_default()
-            .to_string()
-    }
-
-    /// Get the year of the paper
-    pub fn year(&self) -> Option<u32> {
-        self.authors_year
-            .split(",")
-            .nth(1)
-            .and_then(|year| year.trim().parse().ok())
-    }
-}
-
-impl Query for AutoCompleteParam {
-    type Response = Vec<AutoCompletePaper>;
-
-    async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
-        let url = format!("{}/paper/autocomplete", BASE_URL);
-        let req_builder = build_request(client, Method::Get, &url);
-        let res = req_builder.query(self).send().await?;
-        match res.status() {
-            StatusCode::OK => Ok(res.json::<AutoCompleteResponse>().await?.matches),
-            _ => Err(RequestFailedError {
-                error: res.text().await?,
-            }
-            .into()),
-        }
-    }
-}
-
-/// Get details for multiple papers at once.
-///
-/// `POST /paper/batch`
-///
-/// ## Limitations
-/// - Can only process 500 paper ids at a time.
-/// - Can only return up to 10 MB of data at a time.
-/// - Can only return up to 9999 citations at a time.
-#[derive(Debug, Clone)]
-pub struct BatchDetailQueryParam(pub Vec<PaperId>, pub Option<Vec<PaperField>>);
-
-#[derive(Debug, Clone, Serialize)]
-struct PaperIds {
-    ids: Vec<PaperId>,
-}
-
+/// Paper ID
 #[derive(Debug, Clone, PartialEq)]
 pub enum PaperId {
     /// Semantic Scholar ID, e.g. `649def34f8be52c8b66281af98ae884c09aef38b`
@@ -189,7 +102,8 @@ impl Serialize for PaperId {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+/// Paper field
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PaperField {
     CorpusId,
     ExternalIds,
@@ -248,18 +162,22 @@ impl std::fmt::Display for PaperField {
     }
 }
 
-fn merge_paper_fields(fields: &[PaperField]) -> String {
+/// Merge paper fields into a comma-separated string
+pub(crate) fn merge_paper_fields(fields: &[PaperField]) -> String {
     fields
+        .iter()
+        .copied()
+        .collect::<HashSet<_>>()
         .iter()
         .map(|f| f.to_string())
         .collect::<Vec<String>>()
         .join(",")
 }
 
-/// Inner info for batch detail query
+/// Inner struct for the paper/batch query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PaperDetail {
+pub struct Paper {
     /// Semantic Scholar's primary unique identifier for a paper.
     pub paper_id: String,
     /// Semantic Scholar's secondary unique identifier for a paper.
@@ -317,7 +235,9 @@ pub struct PaperDetail {
     /// Food Sciences, Education, Law, and Linguistics.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fields_of_study: Option<Vec<String>>,
-    /// An array of objects. Each object contains the following parameters: category (a field of study. The possible fields are the same as in fieldsOfStudy), and source (specifies whether the category was classified by Semantic Scholar or by an external source. More information on how Semantic Scholar classifies papers https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5).
+    /// An array of objects. Each object contains the following parameters: category (a field of study. The possible fields are the same as in
+    /// fieldsOfStudy), and source (specifies whether the category was classified by Semantic Scholar or by an external source. More information on how Semantic
+    /// Scholar classifies papers https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub s2_fields_of_study: Option<Vec<S2FieldsOfStudy>>,
     /// The type of this publication.
@@ -330,9 +250,8 @@ pub struct PaperDetail {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub journal: Option<Journal>,
     /// The BibTex bibliographical citation of the paper.
-    // TODO: verify the format of the citation styles.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub citation_styles: Option<HashMap<String, String>>,
+    pub citation_styles: Option<CitationStyles>,
     /// Array of authors info.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authors: Option<Vec<Author>>,
@@ -342,12 +261,46 @@ pub struct PaperDetail {
     /// Array of papers that this paper cites.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub references: Option<Vec<AssociatedPaper>>,
-    // TODO: embedding, tldr
+    /// Embedding
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub embedding: Option<Embedding>,
     /// fulltext, abstract, or none, based on what we have available for this paper.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text_availability: Option<String>,
 }
 
+/// Inner struct for the embedding field in the paper/batch query response
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Embedding {
+    /// The Spector vector embedding model version: https://github.com/allenai/spector.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// Numerical embedding vector.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vector: Option<Vec<f64>>,
+}
+
+/// Inner struct for the tldr field in the paper/batch query response
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Tldr {
+    /// The tldr model version number: https://github.com/allenai/scitldr.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// The TL;DR summary of the paper.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+}
+
+/// Inner struct for the citation styles field in the paper/batch query response
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CitationStyles {
+    pub bibtex: Option<String>,
+}
+
+/// Inner struct for the associated paper field in the paper/batch query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssociatedPaper {
@@ -408,7 +361,9 @@ pub struct AssociatedPaper {
     /// Food Sciences, Education, Law, and Linguistics.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fields_of_study: Option<Vec<String>>,
-    /// An array of objects. Each object contains the following parameters: category (a field of study. The possible fields are the same as in fieldsOfStudy), and source (specifies whether the category was classified by Semantic Scholar or by an external source. More information on how Semantic Scholar classifies papers https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5).
+    /// An array of objects. Each object contains the following parameters: category (a field of study. The possible fields are the same as in
+    /// fieldsOfStudy), and source (specifies whether the category was classified by Semantic Scholar or by an external source. More information on how Semantic
+    /// Scholar classifies papers https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub s2_fields_of_study: Option<Vec<S2FieldsOfStudy>>,
     /// The type of this publication.
@@ -422,12 +377,13 @@ pub struct AssociatedPaper {
     pub journal: Option<Journal>,
     /// The BibTex bibliographical citation of the paper.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub citation_styles: Option<HashMap<String, String>>,
+    pub citation_styles: Option<CitationStyles>,
     /// Array of authors info.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authors: Option<Vec<Author>>,
 }
 
+/// Inner struct for the author field in the paper query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Author {
@@ -460,6 +416,7 @@ pub struct Author {
     pub h_index: Option<String>,
 }
 
+/// Inner struct for the author external ids field in the paper query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct AuthorExternalIds {
@@ -469,6 +426,7 @@ pub struct AuthorExternalIds {
     pub dblp: Option<String>,
 }
 
+/// Inner struct for the journal field in the paper query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Journal {
@@ -479,6 +437,8 @@ pub struct Journal {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pages: Option<String>,
 }
+
+/// Inner struct for the s2 fields of study field in the paper query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct S2FieldsOfStudy {
@@ -488,6 +448,7 @@ pub struct S2FieldsOfStudy {
     pub source: Option<String>,
 }
 
+/// Inner struct for the open access pdf field in the paper query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenAccessPdf {
@@ -501,6 +462,7 @@ pub struct OpenAccessPdf {
     pub legal_disclaimer: Option<String>,
 }
 
+/// Inner struct for the publication venue field in the paper query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PublicationVenue {
@@ -517,6 +479,7 @@ pub struct PublicationVenue {
     pub url: Option<String>,
 }
 
+/// Inner struct for the external ids field in the paper query response
 #[derive(Debug, Clone, Deserialize)]
 pub struct ExternalIds {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -548,50 +511,9 @@ pub struct ExternalIds {
     pub medline: Option<String>,
 }
 
-impl Query for BatchDetailQueryParam {
-    type Response = Vec<PaperDetail>;
-
-    async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
-        let paper_ids = PaperIds {
-            ids: self.0.clone(),
-        };
-        let url = if let Some(ref fields) = self.1
-            && !fields.is_empty()
-        {
-            format!(
-                "{}/paper/batch?fields={}",
-                BASE_URL,
-                merge_paper_fields(fields)
-            )
-        } else {
-            format!("{}/paper/batch", BASE_URL)
-        };
-        let req_builder = build_request(client, Method::Post, &url);
-
-        let resp = req_builder.json(&paper_ids).send().await?;
-        match resp.status() {
-            StatusCode::OK => Ok(resp.json().await?),
-            _ => Err(RequestFailedError {
-                error: resp.text().await?,
-            }
-            .into()),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[tokio::test]
-    async fn test_autocomplete() {
-        let client = SemanticScholar::default();
-        let query = AutoCompleteParam {
-            query: "semantic".to_string(),
-        };
-        let res = client.query(&query).await.unwrap();
-        println!("{:?}", res);
-    }
 
     #[test]
     fn test_id_serialization() {
@@ -625,24 +547,6 @@ mod tests {
         let url = PaperId::url("https://arxiv.org/abs/2106.15928v1");
         let url_serialized = serde_json::to_string(&url).unwrap();
         assert_eq!(url_serialized, "\"URL:https://arxiv.org/abs/2106.15928v1\"");
-        let ids = PaperIds {
-            ids: vec![
-                id,
-                corpus_id,
-                doi,
-                arxiv,
-                mag,
-                acl,
-                pubmed,
-                pubmed_central,
-                url,
-            ],
-        };
-        let ids_serialized = serde_json::to_string(&ids).unwrap();
-        assert_eq!(
-            ids_serialized,
-            "{\"ids\":[\"649def34f8be52c8b66281af98ae884c09aef38b\",\"CorpusId:215416146\",\"DOI:10.18653/v1/N18-3011\",\"ARXIV:2106.15928\",\"MAG:112218234\",\"ACL:W12-3903\",\"PMID:19872477\",\"PMCID:2323736\",\"URL:https://arxiv.org/abs/2106.15928v1\"]}"
-        );
     }
 
     #[test]
@@ -678,16 +582,5 @@ mod tests {
             fields_merged,
             "corpusId,externalIds,url,title,abstract,venue,publicationVenue,year,referenceCount,citationCount,influentialCitationCount,isOpenAccess,openAccessPdf,fieldsOfStudy,s2FieldsOfStudy,publicationTypes,publicationDate,journal,citationStyles,authors,citations,references,embedding,tldr"
         );
-    }
-
-    #[tokio::test]
-    async fn test_batch_query() {
-        let ids = vec![PaperId::id("649def34f8be52c8b66281af98ae884c09aef38b")];
-        let fields = vec![PaperField::IsOpenAccess];
-        let param = BatchDetailQueryParam(ids, Some(fields));
-
-        let client = SemanticScholar::default();
-        let res = client.query(&param).await.unwrap();
-        println!("{:?}", res);
     }
 }
