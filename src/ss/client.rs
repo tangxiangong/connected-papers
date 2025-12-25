@@ -1,3 +1,5 @@
+//! Semantic Scholar Client
+
 use crate::error::Result;
 use reqwest::{Client, RequestBuilder};
 use serde::Deserialize;
@@ -6,6 +8,7 @@ use std::time::Duration;
 static APP_USER_AGENT: &str =
     concat!("RS", env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
+/// Client
 #[derive(Debug)]
 pub struct SemanticScholar {
     api_key: Option<String>,
@@ -26,6 +29,7 @@ impl Default for SemanticScholar {
 }
 
 impl SemanticScholar {
+    /// Create a new client with the given API key
     pub fn with_api_key(api_key: &str) -> Self {
         Self {
             api_key: Some(api_key.to_owned()),
@@ -33,6 +37,7 @@ impl SemanticScholar {
         }
     }
 
+    /// Create a new client from the environment variable `SEMANTIC_SCHOLAR_API_KEY`
     pub fn from_env() -> Result<Self> {
         let api_key = std::env::var("SEMANTIC_SCHOLAR_API_KEY")?;
         Ok(Self::with_api_key(&api_key))
@@ -46,11 +51,13 @@ impl SemanticScholar {
         &self.client
     }
 
+    /// Query the Semantic Scholar API
     pub async fn query<Q: Query>(&self, query: &Q) -> Result<Q::Response> {
         query.query(self).await
     }
 }
 
+/// Query trait
 pub trait Query {
     type Response;
 

@@ -23,7 +23,7 @@ pub enum PaperId {
     PubMed(u64),
     /// PubMed Central, e.g. `PMCID:2323736`
     PubMedCentral(u64),
-    /// URL from one of the sites listed below, e.g. `URL:https://arxiv.org/abs/2106.15928v1`
+    /// URL from one of the sites listed below, e.g. `URL:<https://arxiv.org/abs/2106.15928v1>`
     URL(String),
 }
 
@@ -306,14 +306,14 @@ pub struct Paper {
     pub citation_count: Option<u32>,
     /// A subset of the citation count, where the cited publication has a significant
     /// impact on the citing publication. Determined by Semantic Scholar's algorithm:
-    /// https://www.semanticscholar.org/faq#influential-citations.
+    /// <https://www.semanticscholar.org/faq#influential-citations>.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub influential_citation_count: Option<u32>,
-    /// Whether the paper is open access. More information here: https://www.openaccess.nl/en/what-is-open-access.
+    /// Whether the paper is open access. More information here: <https://www.openaccess.nl/en/what-is-open-access>.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_open_access: Option<bool>,
     /// An object that contains the following parameters: url (a link to the paper's
-    /// PDF), status (the type of open access https://en.wikipedia.org/wiki/Open_access#Colour_naming_system), the paper's license, and a legal disclaimer.
+    /// PDF), status (the type of open access <https://en.wikipedia.org/wiki/Open_access#Colour_naming_system>), the paper's license, and a legal disclaimer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub open_access_pdf: Option<OpenAccessPdf>,
     /// A list of the paper's high-level academic categories from external sources.
@@ -326,7 +326,7 @@ pub struct Paper {
     pub fields_of_study: Option<Vec<FieldOfStudy>>,
     /// An array of objects. Each object contains the following parameters: category (a field of study. The possible fields are the same as in
     /// fieldsOfStudy), and source (specifies whether the category was classified by Semantic Scholar or by an external source. More information on how Semantic
-    /// Scholar classifies papers https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5).
+    /// Scholar classifies papers <https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5>).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub s2_fields_of_study: Option<Vec<S2FieldsOfStudy>>,
     /// The type of this publication.
@@ -362,7 +362,7 @@ pub struct Paper {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Embedding {
-    /// The Spector vector embedding model version: https://github.com/allenai/spector.
+    /// The Spector vector embedding model version: <https://github.com/allenai/spector>.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     /// Numerical embedding vector.
@@ -374,7 +374,7 @@ pub struct Embedding {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Tldr {
-    /// The tldr model version number: https://github.com/allenai/scitldr.
+    /// The tldr model version number: <https://github.com/allenai/scitldr>.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     /// The TL;DR summary of the paper.
@@ -432,14 +432,14 @@ pub struct AssociatedPaper {
     pub citation_count: Option<u32>,
     /// A subset of the citation count, where the cited publication has a significant
     /// impact on the citing publication. Determined by Semantic Scholar's algorithm:
-    /// https://www.semanticscholar.org/faq#influential-citations.
+    /// <https://www.semanticscholar.org/faq#influential-citations>.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub influential_citation_count: Option<u32>,
-    /// Whether the paper is open access. More information here: https://www.openaccess.nl/en/what-is-open-access.
+    /// Whether the paper is open access. More information here: <https://www.openaccess.nl/en/what-is-open-access>.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_open_access: Option<bool>,
     /// An object that contains the following parameters: url (a link to the paper's
-    /// PDF), status (the type of open access https://en.wikipedia.org/wiki/Open_access#Colour_naming_system), the paper's license, and a legal disclaimer.
+    /// PDF), status (the type of open access <https://en.wikipedia.org/wiki/Open_access#Colour_naming_system>), the paper's license, and a legal disclaimer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub open_access_pdf: Option<OpenAccessPdf>,
     /// A list of the paper's high-level academic categories from external sources.
@@ -452,7 +452,7 @@ pub struct AssociatedPaper {
     pub fields_of_study: Option<Vec<FieldOfStudy>>,
     /// An array of objects. Each object contains the following parameters: category (a field of study. The possible fields are the same as in
     /// fieldsOfStudy), and source (specifies whether the category was classified by Semantic Scholar or by an external source. More information on how Semantic
-    /// Scholar classifies papers https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5).
+    /// Scholar classifies papers <https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5>).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub s2_fields_of_study: Option<Vec<S2FieldsOfStudy>>,
     /// The type of this publication.
@@ -500,7 +500,7 @@ pub struct Author {
     /// The author's total citations count.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub citation_count: Option<String>,
-    /// The author’s h-index, which is a measure of the productivity and citation impact of the author’s publications: https://www.semanticscholar.org/faq#h-index.
+    /// The author’s h-index, which is a measure of the productivity and citation impact of the author’s publications: <https://www.semanticscholar.org/faq#h-index>.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub h_index: Option<String>,
 }

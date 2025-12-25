@@ -1,3 +1,6 @@
+//! Error
+
+/// Custom `Error`
 #[derive(Debug, thiserror::Error, Clone, PartialEq)]
 pub enum Error {
     #[error(transparent)]
@@ -16,4 +19,5 @@ impl From<reqwest::Error> for Error {
     }
 }
 
+/// Custom `Result`
 pub type Result<T> = std::result::Result<T, Error>;

@@ -38,7 +38,7 @@ pub struct PaperSearchParam {
     pub open_access_pdf: Option<bool>,
     /// Restricts results to only include papers with the minimum number of citations.
     pub min_citation_count: Option<u32>,
-    /// Restricts results to the given range of publication dates or years (inclusive). Accepts the format <startDate>:<endDate> with each date in YYYY-MM-DD format.
+    /// Restricts results to the given range of publication dates or years (inclusive). Accepts the format `<startDate>:<endDate>` with each date in YYYY-MM-DD format.
     ///
     /// Each term is optional, allowing for specific dates, fixed ranges, or open-ended ranges. In addition, prefixes are supported as a shorthand, e.g. 2020-06 matches all dates in June 2020.
     ///
@@ -262,7 +262,7 @@ impl PaperSearchParamBuilder {
         self
     }
 
-    /// Restricts results to the given range of publication dates or years (inclusive). Accepts the format <startDate>:<endDate> with each date in YYYY-MM-DD format.
+    /// Restricts results to the given range of publication dates or years (inclusive). Accepts the format `<startDate>:<endDate>` with each date in YYYY-MM-DD format.
     pub fn publication_date_or_year(&mut self, publication_date_or_year: &str) -> &mut Self {
         self.publication_date_or_year = Some(publication_date_or_year.to_owned());
         self
