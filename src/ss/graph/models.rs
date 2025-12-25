@@ -162,8 +162,97 @@ impl std::fmt::Display for PaperField {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum FieldOfStudy {
+    #[serde(rename = "Computer Science")]
+    ComputerScience,
+    Medicine,
+    Chemistry,
+    Biology,
+    #[serde(rename = "Materials Science")]
+    MaterialsScience,
+    Physics,
+    Geology,
+    Psychology,
+    Art,
+    History,
+    Geography,
+    Sociology,
+    Business,
+    #[serde(rename = "Political Science")]
+    PoliticalScience,
+    Economics,
+    Philosophy,
+    Mathematics,
+    Engineering,
+    #[serde(rename = "Environmental Science")]
+    EnvironmentalScience,
+    #[serde(rename = "Agricultural and Food Sciences")]
+    AgriculturalAndFoodSciences,
+    Education,
+    Law,
+    Linguistics,
+}
+
+impl std::fmt::Display for FieldOfStudy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FieldOfStudy::ComputerScience => write!(f, "Computer Science"),
+            FieldOfStudy::Medicine => write!(f, "Medicine"),
+            FieldOfStudy::Chemistry => write!(f, "Chemistry"),
+            FieldOfStudy::Biology => write!(f, "Biology"),
+            FieldOfStudy::MaterialsScience => write!(f, "Materials Science"),
+            FieldOfStudy::Physics => write!(f, "Physics"),
+            FieldOfStudy::Geology => write!(f, "Geology"),
+            FieldOfStudy::Psychology => write!(f, "Psychology"),
+            FieldOfStudy::Art => write!(f, "Art"),
+            FieldOfStudy::History => write!(f, "History"),
+            FieldOfStudy::Geography => write!(f, "Geography"),
+            FieldOfStudy::Sociology => write!(f, "Sociology"),
+            FieldOfStudy::Business => write!(f, "Business"),
+            FieldOfStudy::PoliticalScience => write!(f, "Political Science"),
+            FieldOfStudy::Economics => write!(f, "Economics"),
+            FieldOfStudy::Philosophy => write!(f, "Philosophy"),
+            FieldOfStudy::Mathematics => write!(f, "Mathematics"),
+            FieldOfStudy::Engineering => write!(f, "Engineering"),
+            FieldOfStudy::EnvironmentalScience => write!(f, "Environmental Science"),
+            FieldOfStudy::AgriculturalAndFoodSciences => {
+                write!(f, "Agricultural and Food Sciences")
+            }
+            FieldOfStudy::Education => write!(f, "Education"),
+            FieldOfStudy::Law => write!(f, "Law"),
+            FieldOfStudy::Linguistics => write!(f, "Linguistics"),
+        }
+    }
+}
+
 /// Merge paper fields into a comma-separated string
 pub(crate) fn merge_paper_fields(fields: &[PaperField]) -> String {
+    fields
+        .iter()
+        .copied()
+        .collect::<HashSet<_>>()
+        .iter()
+        .map(|f| f.to_string())
+        .collect::<Vec<String>>()
+        .join(",")
+}
+
+/// Merge paper publication types into a comma-separated string
+pub(crate) fn merge_publication_types(types: &[PublicationType]) -> String {
+    types
+        .iter()
+        .copied()
+        .collect::<HashSet<_>>()
+        .iter()
+        .map(|f| f.to_string())
+        .collect::<Vec<String>>()
+        .join(",")
+}
+
+/// Merge paper fields of study into a comma-separated string
+pub(crate) fn merge_fields_of_study(fields: &[FieldOfStudy]) -> String {
     fields
         .iter()
         .copied()
@@ -234,7 +323,7 @@ pub struct Paper {
     /// Mathematics, Engineering, Environmental Science, Agricultural and
     /// Food Sciences, Education, Law, and Linguistics.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub fields_of_study: Option<Vec<String>>,
+    pub fields_of_study: Option<Vec<FieldOfStudy>>,
     /// An array of objects. Each object contains the following parameters: category (a field of study. The possible fields are the same as in
     /// fieldsOfStudy), and source (specifies whether the category was classified by Semantic Scholar or by an external source. More information on how Semantic
     /// Scholar classifies papers https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5).
@@ -242,7 +331,7 @@ pub struct Paper {
     pub s2_fields_of_study: Option<Vec<S2FieldsOfStudy>>,
     /// The type of this publication.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub publication_types: Option<Vec<String>>,
+    pub publication_types: Option<Vec<PublicationType>>,
     /// The date when this paper was published, in YYYY-MM-DD format.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub publication_date: Option<String>,
@@ -360,7 +449,7 @@ pub struct AssociatedPaper {
     /// Mathematics, Engineering, Environmental Science, Agricultural and
     /// Food Sciences, Education, Law, and Linguistics.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub fields_of_study: Option<Vec<String>>,
+    pub fields_of_study: Option<Vec<FieldOfStudy>>,
     /// An array of objects. Each object contains the following parameters: category (a field of study. The possible fields are the same as in
     /// fieldsOfStudy), and source (specifies whether the category was classified by Semantic Scholar or by an external source. More information on how Semantic
     /// Scholar classifies papers https://medium.com/ai2-blog/announcing-s2fos-an-open-source-academic-field-of-study-classifier-9d2f641949e5).
@@ -368,7 +457,7 @@ pub struct AssociatedPaper {
     pub s2_fields_of_study: Option<Vec<S2FieldsOfStudy>>,
     /// The type of this publication.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub publication_types: Option<Vec<String>>,
+    pub publication_types: Option<Vec<PublicationType>>,
     /// The date when this paper was published, in YYYY-MM-DD format.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub publication_date: Option<String>,
@@ -460,6 +549,45 @@ pub struct OpenAccessPdf {
     pub license: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub legal_disclaimer: Option<String>,
+}
+
+/// Publication type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum PublicationType {
+    Review,
+    JournalArticle,
+    CaseReport,
+    ClinicalTrial,
+    Conference,
+    Dataset,
+    Editorial,
+    LettersAndComments,
+    MetaAnalysis,
+    News,
+    Study,
+    Book,
+    BookSection,
+}
+
+impl std::fmt::Display for PublicationType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PublicationType::Review => write!(f, "Review"),
+            PublicationType::JournalArticle => write!(f, "JournalArticle"),
+            PublicationType::CaseReport => write!(f, "CaseReport"),
+            PublicationType::ClinicalTrial => write!(f, "ClinicalTrial"),
+            PublicationType::Conference => write!(f, "Conference"),
+            PublicationType::Dataset => write!(f, "Dataset"),
+            PublicationType::Editorial => write!(f, "Editorial"),
+            PublicationType::LettersAndComments => write!(f, "LettersAndComments"),
+            PublicationType::MetaAnalysis => write!(f, "MetaAnalysis"),
+            PublicationType::News => write!(f, "News"),
+            PublicationType::Study => write!(f, "Study"),
+            PublicationType::Book => write!(f, "Book"),
+            PublicationType::BookSection => write!(f, "BookSection"),
+        }
+    }
 }
 
 /// Inner struct for the publication venue field in the paper query response
