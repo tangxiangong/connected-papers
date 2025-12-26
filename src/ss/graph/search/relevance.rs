@@ -13,7 +13,7 @@ use crate::{
     ss::{
         client::{Method, Query, RequestFailedError, SemanticScholar, build_request},
         graph::{
-            _Date, BASE_URL, Date, FieldOfStudy, Paper, PaperField, PublicationType,
+            _Date, BASE_URL, Date, FieldOfStudy, NestedPaper, PaperField, PublicationType,
             merge_fields_of_study, merge_paper_fields, merge_publication_types,
         },
     },
@@ -370,13 +370,13 @@ impl PaperSearchParamBuilder {
 #[derive(Debug, Clone, Deserialize)]
 pub struct PaperSearchResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<u32>,
+    pub total: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<Vec<Paper>>,
+    pub data: Option<Vec<NestedPaper>>,
 }
 
 #[cfg(test)]
