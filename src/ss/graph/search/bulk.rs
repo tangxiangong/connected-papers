@@ -31,89 +31,95 @@ use reqwest::StatusCode;
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]
-pub enum QueryNode {
-    Term(String),   // word
-    Phrase(String), // "word phrase"
-    Prefix(String), // word*
-
+pub enum QueryExpr {
+    Term(String),                  // word
+    Phrase(String),                // "word phrase"
+    Prefix(String),                // word*
     FuzzyTerm(String, Option<u8>), // word~N
     ProximityPhrase(String, u8),   // "word phrase"~N
-
-    And(Vec<QueryNode>), // +
-    Or(Vec<QueryNode>),  // |
-    Not(Box<QueryNode>), // -
+    And(Vec<QueryExpr>),           // +
+    Or(Vec<QueryExpr>),            // |
+    Not(Box<QueryExpr>),           // -
 }
 
-impl QueryNode {
+impl QueryExpr {
+    /// Create a new term query expression
     pub fn term(term: &str) -> Self {
-        QueryNode::Term(term.to_string())
+        QueryExpr::Term(term.to_string())
     }
 
+    /// Create a new phrase query expression
     pub fn phrase(phrase: &str) -> Self {
-        QueryNode::Phrase(phrase.to_string())
+        QueryExpr::Phrase(phrase.to_string())
     }
 
+    /// Create a new prefix query expression
     pub fn prefix(prefix: &str) -> Self {
-        QueryNode::Prefix(prefix.to_string())
+        QueryExpr::Prefix(prefix.to_string())
     }
 
+    /// Create a new fuzzy term query expression
     pub fn fuzzy(term: &str, distance: Option<u8>) -> Self {
-        QueryNode::FuzzyTerm(term.to_string(), distance)
+        QueryExpr::FuzzyTerm(term.to_string(), distance)
     }
 
+    /// Create a new proximity phrase query expression
     pub fn proximity(phrase: &str, distance: u8) -> Self {
-        QueryNode::ProximityPhrase(phrase.to_string(), distance)
+        QueryExpr::ProximityPhrase(phrase.to_string(), distance)
     }
 
-    pub fn and(self, other: QueryNode) -> Self {
+    /// Create a new AND query expression
+    pub fn and(self, other: QueryExpr) -> Self {
         match self {
-            QueryNode::And(mut nodes) => {
+            QueryExpr::And(mut nodes) => {
                 nodes.push(other);
-                QueryNode::And(nodes)
+                QueryExpr::And(nodes)
             }
-            _ => QueryNode::And(vec![self, other]),
+            _ => QueryExpr::And(vec![self, other]),
         }
     }
 
-    pub fn or(self, other: QueryNode) -> Self {
+    /// Create a new OR query expression
+    pub fn or(self, other: QueryExpr) -> Self {
         match self {
-            QueryNode::Or(mut nodes) => {
+            QueryExpr::Or(mut nodes) => {
                 nodes.push(other);
-                QueryNode::Or(nodes)
+                QueryExpr::Or(nodes)
             }
-            _ => QueryNode::Or(vec![self, other]),
+            _ => QueryExpr::Or(vec![self, other]),
         }
     }
 
+    /// Create a new NOT query expression
     #[allow(clippy::should_implement_trait)]
     pub fn not(self) -> Self {
-        QueryNode::Not(Box::new(self))
+        QueryExpr::Not(Box::new(self))
     }
 }
 
-impl std::fmt::Display for QueryNode {
+impl std::fmt::Display for QueryExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            QueryNode::Term(term) => write!(f, "{}", term),
-            QueryNode::Phrase(phrase) => write!(f, "\"{}\"", phrase),
-            QueryNode::Prefix(prefix) => write!(f, "{}*", prefix),
-            QueryNode::FuzzyTerm(term, n) => {
+            QueryExpr::Term(term) => write!(f, "{}", term),
+            QueryExpr::Phrase(phrase) => write!(f, "\"{}\"", phrase),
+            QueryExpr::Prefix(prefix) => write!(f, "{}*", prefix),
+            QueryExpr::FuzzyTerm(term, n) => {
                 if let Some(n) = n {
                     write!(f, "{}~{}", term, n)
                 } else {
                     write!(f, "{}~", term)
                 }
             }
-            QueryNode::ProximityPhrase(phrase, n) => write!(f, "\"{}\"~{}", phrase, n),
-            QueryNode::Not(node) => match **node {
-                QueryNode::And(_) | QueryNode::Or(_) => write!(f, "-({})", node),
+            QueryExpr::ProximityPhrase(phrase, n) => write!(f, "\"{}\"~{}", phrase, n),
+            QueryExpr::Not(node) => match **node {
+                QueryExpr::And(_) | QueryExpr::Or(_) => write!(f, "-({})", node),
                 _ => write!(f, "-{}", node),
             },
-            QueryNode::And(list) => {
+            QueryExpr::And(list) => {
                 let content = list
                     .iter()
                     .map(|q| match q {
-                        QueryNode::Or(_) => format!("({})", q),
+                        QueryExpr::Or(_) => format!("({})", q),
                         _ => format!("{}", q),
                     })
                     .collect::<Vec<_>>()
@@ -121,7 +127,7 @@ impl std::fmt::Display for QueryNode {
                 write!(f, "{}", content)
             }
 
-            QueryNode::Or(list) => {
+            QueryExpr::Or(list) => {
                 let content = list
                     .iter()
                     .map(|q| format!("{}", q))
@@ -194,57 +200,14 @@ pub struct PaperBulkSearchParam {
     query: String,
     /// Used for pagination. This string token is provided when the original query returns, and is used to fetch the next batch of papers. Each call will return a new token.
     token: Option<String>,
-    /// A comma-separated list of the fields to be returned.
     fields: Option<Vec<PaperField>>,
-    /// Provides the option to sort the results by the following fields:
-    /// - `paperId`
-    /// - `publicationDate`
-    /// - `citationCount`
-    ///
-    /// Uses the format field:order. Ties are broken by paperId. The default field is paperId and the default order is asc. Records for which the sort value are not defined will appear at the end of sort, regardless of asc/desc order.
-    ///
-    /// ## Examples
-    ///
-    /// - `publicationDate:asc` - return oldest papers first.
-    /// - `citationCount:desc` - return most highly-cited papers first.
-    /// - `paperId` - return papers in ID order, low-to-high.
-    ///
-    /// Please be aware that if the relevant data changes while paging through results, records can be returned in an unexpected way. The default paperId sort avoids this edge case.
     sort: Option<SortBy>,
-    /// Restricts results to any of the paper publication types.
     publication_types: Option<Vec<PublicationType>>,
-    /// Restricts results to only include papers with a public PDF.
-    /// This parameter does not accept any values.
     open_access_pdf: Option<bool>,
-    /// Restricts results to only include papers with the minimum number of citations.
     min_citation_count: Option<u32>,
-    /// Restricts results to the given range of publication dates. Accepts the format `<startDate>:<endDate>` with each date in YYYY-MM-DD format.
-    ///
-    /// Each term is optional, allowing for specific dates, fixed ranges, or open-ended ranges. In addition, prefixes are supported as a shorthand, e.g. 2020-06 matches all dates in June 2020.
-    ///
-    /// Specific dates are not known for all papers, so some records returned with this filter will have a null value for publicationDate. year, however, will always be present. For records where a specific publication date is not known, they will be treated as if published on January 1st of their publication year.
-    ///
-    /// ## Examples
-    ///
-    /// - `2019-03-05` on March 5th, 2019
-    /// - `2019-03` during March 2019
-    /// - `2016-03-05:2020-06-06` as early as March 5th, 2016 or as late as June 6th, 2020
-    /// - `1981-08-25:` on or after August 25th, 1981
-    /// - `:2015-01` before or on January 31st, 2015
     publication_date: Option<(Option<Date>, Option<Date>)>,
-    /// Restricts results to the given publication year or range of years (inclusive).
-    ///
-    /// ## Examples
-    /// - `2019` in 2019
-    /// - `2016-2020` as early as 2016 or as late as 2020
-    /// - `2010-` during or after 2010
-    /// - `-2015` before or during 2015
     year: Option<(Option<u32>, Option<u32>)>,
-    /// Restricts results to papers in the given fields of study, formatted as a comma-separated list.
     fields_of_study: Option<Vec<FieldOfStudy>>,
-    /// Restricts results to papers published in the given venues, formatted as a comma-separated list.
-    ///
-    /// Input could also be an ISO4 abbreviation.
     venue: Option<Vec<String>>,
 }
 
@@ -353,7 +316,7 @@ impl Query for PaperBulkSearchParam {
 /// Builder for the paper search parameters
 #[derive(Debug, Clone, Default)]
 pub struct PaperBulkSearchParamBuilder {
-    query: Option<QueryNode>,
+    query: Option<QueryExpr>,
     token: Option<String>,
     sort: Option<SortBy>,
     fields: Option<Vec<PaperField>>,
@@ -367,7 +330,7 @@ pub struct PaperBulkSearchParamBuilder {
 }
 
 impl PaperBulkSearchParamBuilder {
-    pub fn query(&mut self, query: &QueryNode) -> &mut Self {
+    pub fn query(&mut self, query: &QueryExpr) -> &mut Self {
         self.query = Some(query.clone());
         self
     }
@@ -575,7 +538,7 @@ mod tests {
     fn test_paper_search_param_builder() {
         let mut builder = PaperBulkSearchParamBuilder::default();
         builder
-            .query(&QueryNode::term("test"))
+            .query(&QueryExpr::term("test"))
             .field(PaperField::Title)
             .publication_type(PublicationType::JournalArticle)
             .open_access_pdf()
