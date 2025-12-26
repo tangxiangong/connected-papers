@@ -85,22 +85,28 @@ impl PaperId {
     }
 }
 
+impl std::fmt::Display for PaperId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PaperId::S2Id(id) => write!(f, "{}", id),
+            PaperId::CorpusId(v) => write!(f, "CorpusId:{}", v),
+            PaperId::DOI(id) => write!(f, "DOI:{}", id),
+            PaperId::ArXiv(id) => write!(f, "ARXIV:{}", id),
+            PaperId::MAG(id) => write!(f, "MAG:{}", id),
+            PaperId::ACL(id) => write!(f, "ACL:{}", id),
+            PaperId::PubMed(id) => write!(f, "PMID:{}", id),
+            PaperId::PubMedCentral(id) => write!(f, "PMCID:{}", id),
+            PaperId::URL(id) => write!(f, "URL:{}", id),
+        }
+    }
+}
+
 impl Serialize for PaperId {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match self {
-            PaperId::S2Id(s) => serializer.serialize_str(s),
-            PaperId::CorpusId(v) => serializer.serialize_str(&format!("CorpusId:{}", v)),
-            PaperId::DOI(v) => serializer.serialize_str(&format!("DOI:{}", v)),
-            PaperId::ArXiv(v) => serializer.serialize_str(&format!("ARXIV:{}", v)),
-            PaperId::MAG(v) => serializer.serialize_str(&format!("MAG:{}", v)),
-            PaperId::ACL(v) => serializer.serialize_str(&format!("ACL:{}", v)),
-            PaperId::PubMed(v) => serializer.serialize_str(&format!("PMID:{}", v)),
-            PaperId::PubMedCentral(v) => serializer.serialize_str(&format!("PMCID:{}", v)),
-            PaperId::URL(v) => serializer.serialize_str(&format!("URL:{}", v)),
-        }
+        serializer.serialize_str(self.to_string().as_str())
     }
 }
 
