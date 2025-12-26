@@ -11,7 +11,7 @@ use crate::{
     error::{Error, Result},
     ss::{
         client::{Method, Query, RequestFailedError, SemanticScholar, build_request},
-        graph::{BASE_URL, Paper, PaperField, PaperId, merge_paper_fields},
+        graph::{BASE_URL, NestedPaper, PaperField, PaperId, merge_paper_fields},
     },
 };
 use reqwest::StatusCode;
@@ -68,7 +68,7 @@ struct PaperIds {
 }
 
 impl Query for PaperBatchParam {
-    type Response = Vec<Paper>;
+    type Response = Vec<NestedPaper>;
 
     async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
         let paper_ids = PaperIds {

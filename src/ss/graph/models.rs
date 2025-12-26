@@ -268,7 +268,7 @@ pub(crate) fn merge_fields_of_study(fields: &[FieldOfStudy]) -> String {
 /// Inner struct for the paper/batch query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Paper {
+pub struct NestedPaper {
     /// Semantic Scholar's primary unique identifier for a paper.
     pub paper_id: String,
     /// Semantic Scholar's secondary unique identifier for a paper.
@@ -348,10 +348,10 @@ pub struct Paper {
     pub authors: Option<Vec<Author>>,
     /// Array of papers that cite this paper.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub citations: Option<Vec<AssociatedPaper>>,
+    pub citations: Option<Vec<Paper>>,
     /// Array of papers that this paper cites.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub references: Option<Vec<AssociatedPaper>>,
+    pub references: Option<Vec<Paper>>,
     /// Embedding
     #[serde(skip_serializing_if = "Option::is_none")]
     pub embedding: Option<Embedding>,
@@ -394,7 +394,7 @@ pub struct CitationStyles {
 /// Inner struct for the associated paper field in the paper/batch query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AssociatedPaper {
+pub struct Paper {
     /// Semantic Scholar's primary unique identifier for a paper.
     pub paper_id: String,
     /// Semantic Scholar's secondary unique identifier for a paper.
