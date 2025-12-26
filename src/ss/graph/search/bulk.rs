@@ -336,7 +336,7 @@ impl Query for PaperBulkSearchParam {
     type Response = PaperBulkSearchResponse;
 
     async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
-        let url = format!("{}/paper/search?{}", BASE_URL, self.query_string());
+        let url = format!("{}/paper/search/bulk?{}", BASE_URL, self.query_string());
         let req_builder = build_request(client, Method::Get, &url);
 
         let resp = req_builder.send().await?;
