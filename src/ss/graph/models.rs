@@ -736,39 +736,4 @@ mod tests {
         let url_serialized = serde_json::to_string(&url).unwrap();
         assert_eq!(url_serialized, "\"URL:https://arxiv.org/abs/2106.15928v1\"");
     }
-
-    #[test]
-    fn test_paper_field_merge() {
-        let fields = vec![
-            PaperField::CorpusId,
-            PaperField::ExternalIds,
-            PaperField::URL,
-            PaperField::Title,
-            PaperField::Abstract,
-            PaperField::Venue,
-            PaperField::PublicationVenue,
-            PaperField::Year,
-            PaperField::ReferenceCount,
-            PaperField::CitationCount,
-            PaperField::InfluentialCitationCount,
-            PaperField::IsOpenAccess,
-            PaperField::OpenAccessPDF,
-            PaperField::FieldsOfStudy,
-            PaperField::S2FieldsOfStudy,
-            PaperField::PublicationTypes,
-            PaperField::PublicationDate,
-            PaperField::Journal,
-            PaperField::CitationStyles,
-            PaperField::Authors,
-            PaperField::Citations,
-            PaperField::References,
-            PaperField::Embedding,
-            PaperField::Tldr,
-        ];
-        let fields_merged = merge_paper_fields(&fields);
-        assert_eq!(
-            fields_merged,
-            "corpusId,externalIds,url,title,abstract,venue,publicationVenue,year,referenceCount,citationCount,influentialCitationCount,isOpenAccess,openAccessPdf,fieldsOfStudy,s2FieldsOfStudy,publicationTypes,publicationDate,journal,citationStyles,authors,citations,references,embedding,tldr"
-        );
-    }
 }

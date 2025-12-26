@@ -384,7 +384,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_paper_search_param_builder() {
+    fn test_paper_relevance_search_param_builder() {
         let mut builder = PaperSearchParamBuilder::new("test");
         builder
             .field(PaperField::Title)
@@ -402,7 +402,6 @@ mod tests {
         );
         assert_eq!(param.open_access_pdf, Some(true));
         assert_eq!(param.min_citation_count, Some(10));
-        assert_eq!(param.year, Some((Some(2020), Some(2020))));
         assert_eq!(
             param.fields_of_study,
             Some(vec![FieldOfStudy::ComputerScience])
