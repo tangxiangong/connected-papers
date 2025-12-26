@@ -13,8 +13,8 @@ use crate::{
     ss::{
         client::{Method, Query, RequestFailedError, SemanticScholar, build_request},
         graph::{
-            BASE_URL, FieldOfStudy, Paper, PaperField, PublicationType, merge_fields_of_study,
-            merge_paper_fields, merge_publication_types,
+            _Date, BASE_URL, Date, FieldOfStudy, Paper, PaperField, PublicationType,
+            merge_fields_of_study, merge_paper_fields, merge_publication_types,
         },
     },
 };
@@ -28,17 +28,17 @@ pub struct PaperSearchParam {
     ///
     /// - No special query syntax is supported.
     /// - Hyphenated query terms yield no matches (replace it with space to find matches)
-    pub query: String,
+    query: String,
     /// A comma-separated list of the fields to be returned.
-    pub fields: Option<Vec<PaperField>>,
+    fields: Option<Vec<PaperField>>,
     /// Restricts results to any of the paper publication types.
-    pub publication_types: Option<Vec<PublicationType>>,
+    publication_types: Option<Vec<PublicationType>>,
     /// Restricts results to only include papers with a public PDF.
     /// This parameter does not accept any values.
-    pub open_access_pdf: Option<bool>,
+    open_access_pdf: Option<bool>,
     /// Restricts results to only include papers with the minimum number of citations.
-    pub min_citation_count: Option<u32>,
-    /// Restricts results to the given range of publication dates or years (inclusive). Accepts the format `<startDate>:<endDate>` with each date in YYYY-MM-DD format.
+    min_citation_count: Option<u32>,
+    /// Restricts results to the given range of publication dates. Accepts the format `<startDate>:<endDate>` with each date in YYYY-MM-DD format.
     ///
     /// Each term is optional, allowing for specific dates, fixed ranges, or open-ended ranges. In addition, prefixes are supported as a shorthand, e.g. 2020-06 matches all dates in June 2020.
     ///
@@ -48,12 +48,10 @@ pub struct PaperSearchParam {
     ///
     /// - `2019-03-05` on March 5th, 2019
     /// - `2019-03` during March 2019
-    /// - `2019` during 2019
     /// - `2016-03-05:2020-06-06` as early as March 5th, 2016 or as late as June 6th, 2020
     /// - `1981-08-25:` on or after August 25th, 1981
     /// - `:2015-01` before or on January 31st, 2015
-    /// - `2015:2020` between January 1st, 2015 and December 31st, 2020
-    pub publication_date_or_year: Option<String>,
+    publication_date: Option<(Option<Date>, Option<Date>)>,
     /// Restricts results to the given publication year or range of years (inclusive).
     ///
     /// ## Examples
@@ -61,55 +59,19 @@ pub struct PaperSearchParam {
     /// - `2016-2020` as early as 2016 or as late as 2020
     /// - `2010-` during or after 2010
     /// - `-2015` before or during 2015
-    pub year: Option<YearRange>,
+    year: Option<(Option<u32>, Option<u32>)>,
     /// Restricts results to papers in the given fields of study, formatted as a comma-separated list.
-    pub fields_of_study: Option<Vec<FieldOfStudy>>,
+    fields_of_study: Option<Vec<FieldOfStudy>>,
     /// Restricts results to papers published in the given venues, formatted as a comma-separated list.
     ///
     /// Input could also be an ISO4 abbreviation.
-    pub venue: Option<Vec<String>>,
+    venue: Option<Vec<String>>,
     /// Used for pagination. When returning a list of results, start with the element at this position in the list (default: 0).
-    pub offset: Option<u32>,
+    offset: Option<u32>,
     /// The maximum number of results to return (default: 100).
     ///
     /// Must be <= 100.
-    pub limit: Option<u8>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct YearRange {
-    start: Option<u32>,
-    end: Option<u32>,
-}
-
-impl YearRange {
-    pub fn new(start: u32, end: u32) -> Self {
-        Self {
-            start: Some(start),
-            end: Some(end),
-        }
-    }
-
-    pub fn from(start: u32) -> Self {
-        Self {
-            start: Some(start),
-            end: None,
-        }
-    }
-
-    pub fn to(end: u32) -> Self {
-        Self {
-            start: None,
-            end: Some(end),
-        }
-    }
-
-    pub fn at(year: u32) -> Self {
-        Self {
-            start: Some(year),
-            end: Some(year),
-        }
-    }
+    limit: Option<u8>,
 }
 
 impl PaperSearchParam {
@@ -139,15 +101,23 @@ impl PaperSearchParam {
             query_string.push_str(&format!("&minCitationCount={}", min_citation_count));
         }
 
-        if let Some(ref publication_date_or_year) = self.publication_date_or_year {
-            query_string.push_str(&format!(
-                "&publicationDateOrYear={}",
-                publication_date_or_year
-            ));
+        if let Some((ref start, ref end)) = self.publication_date {
+            match (start.as_ref(), end.as_ref()) {
+                (Some(start), Some(end)) => {
+                    query_string.push_str(&format!("&publicationDate={}:{}", start, end));
+                }
+                (Some(start), None) => {
+                    query_string.push_str(&format!("&publicationDate={}:", start));
+                }
+                (None, Some(end)) => {
+                    query_string.push_str(&format!("&publicationDate=:{}", end));
+                }
+                (None, None) => (),
+            }
         }
 
         if let Some(year) = self.year {
-            match (year.start, year.end) {
+            match (year.0, year.1) {
                 (Some(start), Some(end)) => {
                     if start == end {
                         query_string.push_str(&format!("&year={}", start));
@@ -213,8 +183,8 @@ pub struct PaperSearchParamBuilder {
     publication_types: Option<Vec<PublicationType>>,
     open_access_pdf: Option<bool>,
     min_citation_count: Option<u32>,
-    publication_date_or_year: Option<String>,
-    year: Option<YearRange>,
+    publication_date: Option<(Option<_Date>, Option<_Date>)>,
+    year: Option<(Option<u32>, Option<u32>)>,
     fields_of_study: Option<Vec<FieldOfStudy>>,
     venue: Option<Vec<String>>,
     offset: Option<u32>,
@@ -262,33 +232,64 @@ impl PaperSearchParamBuilder {
         self
     }
 
-    /// Restricts results to the given range of publication dates or years (inclusive). Accepts the format `<startDate>:<endDate>` with each date in YYYY-MM-DD format.
-    pub fn publication_date_or_year(&mut self, publication_date_or_year: &str) -> &mut Self {
-        self.publication_date_or_year = Some(publication_date_or_year.to_owned());
+    /// Restricts results to the given range of publication dates.
+    pub fn from_date(&mut self, year: i32, month: u32, day: u32) -> &mut Self {
+        if let Some((ref mut start, _)) = self.publication_date {
+            *start = Some(_Date(year, month, Some(day)));
+        } else {
+            self.publication_date = Some((Some(_Date(year, month, Some(day))), None));
+        }
+        self
+    }
+
+    pub fn to_date(&mut self, year: i32, month: u32, day: u32) -> &mut Self {
+        if let Some((_, ref mut end)) = self.publication_date {
+            *end = Some(_Date(year, month, Some(day)));
+        } else {
+            self.publication_date = Some((None, Some(_Date(year, month, Some(day)))));
+        }
+        self
+    }
+
+    pub fn from_month(&mut self, year: i32, month: u32) -> &mut Self {
+        if let Some((ref mut start, _)) = self.publication_date {
+            *start = Some(_Date(year, month, None));
+        } else {
+            self.publication_date = Some((Some(_Date(year, month, None)), None));
+        }
+        self
+    }
+
+    pub fn to_month(&mut self, year: i32, month: u32) -> &mut Self {
+        if let Some((_, ref mut end)) = self.publication_date {
+            *end = Some(_Date(year, month, None));
+        } else {
+            self.publication_date = Some((None, Some(_Date(year, month, None))));
+        }
         self
     }
 
     /// Restricts results to the given publication year range (inclusive).
-    pub fn year_range(&mut self, start: u32, end: u32) -> &mut Self {
-        self.year = Some(YearRange::new(start, end));
+    pub fn from_year(&mut self, year: u32) -> &mut Self {
+        if let Some((ref mut start, _)) = self.year {
+            *start = Some(year);
+        } else {
+            self.year = Some((Some(year), None));
+        }
         self
     }
 
-    /// Restricts results to the given publication year start to now.
-    pub fn year_from(&mut self, start: u32) -> &mut Self {
-        self.year = Some(YearRange::from(start));
+    pub fn to_year(&mut self, year: u32) -> &mut Self {
+        if let Some((_, ref mut end)) = self.year {
+            *end = Some(year);
+        } else {
+            self.year = Some((None, Some(year)));
+        }
         self
     }
 
-    /// Restricts results to papers published before or during the given year.
-    pub fn year_to(&mut self, end: u32) -> &mut Self {
-        self.year = Some(YearRange::to(end));
-        self
-    }
-
-    /// Restricts results to papers published in the given year.
-    pub fn year_at(&mut self, year: u32) -> &mut Self {
-        self.year = Some(YearRange::at(year));
+    pub fn at_year(&mut self, year: u32) -> &mut Self {
+        self.year = Some((Some(year), Some(year)));
         self
     }
 
@@ -328,21 +329,34 @@ impl PaperSearchParamBuilder {
     /// Build the paper search parameters
     pub fn build(&self) -> Result<PaperSearchParam> {
         if let Some(year) = self.year
-            && let Some(start) = year.start
-            && let Some(end) = year.end
+            && let Some(start) = year.0
+            && let Some(end) = year.1
             && start > end
         {
             return Err(Error::InvalidParameter(
                 "start year must be less than or equal to end year".to_string(),
             ));
         }
+
+        let publication_date = match self.publication_date {
+            Some((ref start, ref end)) => match (start.as_ref(), end.as_ref()) {
+                (Some(start), Some(end)) => {
+                    Some((Some(Date::try_from(start)?), Some(Date::try_from(end)?)))
+                }
+                (Some(start), None) => Some((Some(Date::try_from(start)?), None)),
+                (None, Some(end)) => Some((None, Some(Date::try_from(end)?))),
+                (None, None) => None,
+            },
+            None => None,
+        };
+
         Ok(PaperSearchParam {
             query: self.query.clone(),
             fields: self.fields.clone(),
             publication_types: self.publication_types.clone(),
             open_access_pdf: self.open_access_pdf,
             min_citation_count: self.min_citation_count,
-            publication_date_or_year: self.publication_date_or_year.clone(),
+            publication_date,
             year: self.year,
             fields_of_study: self.fields_of_study.clone(),
             venue: self.venue.clone(),
@@ -377,8 +391,7 @@ mod tests {
             .publication_type(PublicationType::JournalArticle)
             .open_access_pdf()
             .min_citation_count(10)
-            .publication_date_or_year("2020-01-01:2020-12-31")
-            .year_at(2020)
+            .from_date(2020, 1, 1)
             .field_of_study(FieldOfStudy::ComputerScience);
         let param = builder.build().unwrap();
         assert_eq!(param.query, "test");
@@ -389,11 +402,7 @@ mod tests {
         );
         assert_eq!(param.open_access_pdf, Some(true));
         assert_eq!(param.min_citation_count, Some(10));
-        assert_eq!(
-            param.publication_date_or_year,
-            Some("2020-01-01:2020-12-31".to_owned())
-        );
-        assert_eq!(param.year, Some(YearRange::at(2020)));
+        assert_eq!(param.year, Some((Some(2020), Some(2020))));
         assert_eq!(
             param.fields_of_study,
             Some(vec![FieldOfStudy::ComputerScience])

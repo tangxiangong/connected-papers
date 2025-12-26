@@ -1,6 +1,8 @@
 //! Models for the Semantic Scholar Graph API
 //!
 
+use crate::error::{Error, Result};
+use chrono::{Datelike, NaiveDate};
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::HashSet;
 
@@ -334,7 +336,7 @@ pub struct Paper {
     pub publication_types: Option<Vec<PublicationType>>,
     /// The date when this paper was published, in YYYY-MM-DD format.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub publication_date: Option<String>,
+    pub publication_date: Option<NaiveDate>,
     /// An object that contains the following parameters, if available: name (the journal name), volume (the journal’s volume number), and pages (the page number range).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub journal: Option<Journal>,
@@ -460,7 +462,7 @@ pub struct AssociatedPaper {
     pub publication_types: Option<Vec<PublicationType>>,
     /// The date when this paper was published, in YYYY-MM-DD format.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub publication_date: Option<String>,
+    pub publication_date: Option<NaiveDate>,
     /// An object that contains the following parameters, if available: name (the journal name), volume (the journal’s volume number), and pages (the page number range).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub journal: Option<Journal>,
@@ -637,6 +639,58 @@ pub struct ExternalIds {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "Medline")]
     pub medline: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Date {
+    pub(crate) inner: NaiveDate,
+    pub(crate) whole_month: bool,
+}
+
+impl Date {
+    pub(crate) fn new(year: i32, month: u32, day: u32) -> Result<Self> {
+        let inner = NaiveDate::from_ymd_opt(year, month, day)
+            .ok_or(Error::InvalidParameter("invalid date".to_string()))?;
+        Ok(Self {
+            inner,
+            whole_month: false,
+        })
+    }
+
+    pub(crate) fn whole_month(year: i32, month: u32) -> Result<Self> {
+        let inner = NaiveDate::from_ymd_opt(year, month, 1)
+            .ok_or(Error::InvalidParameter("invalid date".to_string()))?;
+        Ok(Self {
+            inner,
+            whole_month: true,
+        })
+    }
+}
+
+impl std::fmt::Display for Date {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.whole_month {
+            write!(f, "{}-{}", self.inner.year(), self.inner.month())
+        } else {
+            write!(f, "{}", self.inner)
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct _Date(pub(crate) i32, pub(crate) u32, pub(crate) Option<u32>);
+
+impl TryFrom<&_Date> for Date {
+    type Error = Error;
+
+    fn try_from(value: &_Date) -> Result<Self> {
+        let (year, month, day) = (value.0, value.1, value.2);
+        if let Some(day) = day {
+            Date::new(year, month, day)
+        } else {
+            Date::whole_month(year, month)
+        }
+    }
 }
 
 #[cfg(test)]
