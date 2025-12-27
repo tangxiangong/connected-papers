@@ -87,6 +87,7 @@ impl Query for PaperAutocompleteParam {
 mod tests {
     use super::*;
 
+    #[ignore]
     #[tokio::test]
     async fn test_autocomplete() {
         let client = SemanticScholar::default();

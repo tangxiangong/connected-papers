@@ -413,6 +413,7 @@ impl From<InnerPaperTitleSearchResponse> for MatchedPaper {
 mod tests {
     use super::*;
 
+    #[ignore]
     #[tokio::test]
     async fn test_query() {
         let client = SemanticScholar::default();

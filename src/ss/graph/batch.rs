@@ -112,6 +112,7 @@ mod tests {
         assert_eq!(param.fields, Some(vec![PaperField::IsOpenAccess]));
     }
 
+    #[ignore]
     #[tokio::test]
     async fn test_batch_query() {
         let ids = vec![PaperId::id("649def34f8be52c8b66281af98ae884c09aef38b")];

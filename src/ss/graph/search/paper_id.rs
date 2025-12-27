@@ -78,6 +78,7 @@ impl Query for PaperIdSearchParam {
 mod tests {
     use super::*;
 
+    #[ignore]
     #[tokio::test]
     async fn test_query() {
         let mut param =
