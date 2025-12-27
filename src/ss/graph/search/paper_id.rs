@@ -10,7 +10,7 @@
 use crate::{
     error::Result,
     ss::{
-        client::{Method, Query, RequestFailedError, SemanticScholar, build_request},
+        client::{Method, Query, S2RequestFailedError, SemanticScholar, build_request},
         graph::{BASE_URL, NestedPaper, PaperField, PaperId, merge_paper_fields},
     },
 };
@@ -69,7 +69,7 @@ impl Query for PaperIdSearchParam {
         match resp.status() {
             StatusCode::OK => Ok(Some(resp.json().await?)),
             StatusCode::NOT_FOUND => Ok(None),
-            _ => Err(RequestFailedError {
+            _ => Err(S2RequestFailedError {
                 error: resp.text().await?,
             }
             .into()),

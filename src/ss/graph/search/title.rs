@@ -7,7 +7,7 @@
 use crate::{
     error::{Error, Result},
     ss::{
-        client::{Method, Query, RequestFailedError, SemanticScholar, build_request},
+        client::{Method, Query, S2RequestFailedError, SemanticScholar, build_request},
         graph::{
             _Date, Author, BASE_URL, CitationStyles, Date, Embedding, ExternalIds, FieldOfStudy,
             Journal, NestedPaper, OpenAccessPdf, Paper, PaperField, PublicationType,
@@ -127,7 +127,7 @@ impl Query for PaperTitleSearchParam {
                 }
             }
             StatusCode::NOT_FOUND => Ok(None),
-            _ => Err(RequestFailedError {
+            _ => Err(S2RequestFailedError {
                 error: resp.text().await?,
             }
             .into()),

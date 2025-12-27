@@ -10,7 +10,7 @@
 use crate::{
     error::{Error, Result},
     ss::{
-        client::{Method, Query, RequestFailedError, SemanticScholar, build_request},
+        client::{Method, Query, S2RequestFailedError, SemanticScholar, build_request},
         graph::{BASE_URL, NestedPaper, PaperField, PaperId, merge_paper_fields},
     },
 };
@@ -90,7 +90,7 @@ impl Query for PaperBatchParam {
         let resp = req_builder.json(&paper_ids).send().await?;
         match resp.status() {
             StatusCode::OK => Ok(resp.json().await?),
-            _ => Err(RequestFailedError {
+            _ => Err(S2RequestFailedError {
                 error: resp.text().await?,
             }
             .into()),

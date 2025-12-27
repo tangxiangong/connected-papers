@@ -4,3 +4,5 @@ pub mod error;
 pub use error::*;
 pub mod ss;
 pub use ss::*;
+pub mod client;
+pub use client::*;

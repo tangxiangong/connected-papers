@@ -69,7 +69,7 @@ pub trait Query {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, thiserror::Error)]
 #[error("{error}")]
-pub struct RequestFailedError {
+pub struct S2RequestFailedError {
     pub error: String,
 }
 
