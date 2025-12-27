@@ -10,9 +10,10 @@
 use crate::{
     error::{Error, Result},
     ss::{
-        client::{Method, Query, SemanticScholar, build_request},
+        client::{Query, SemanticScholar},
         graph::{BASE_URL, NestedPaper, PaperField, PaperId, merge_paper_fields},
     },
+    utils::{Method, build_request},
 };
 use reqwest::StatusCode;
 use serde::Serialize;
@@ -85,7 +86,8 @@ impl Query for PaperBatchParam {
         } else {
             format!("{}/paper/batch", BASE_URL)
         };
-        let req_builder = build_request(client, Method::Post, &url);
+
+        let req_builder = build_request(client.client(), Method::Post, &url, client.api_key());
 
         let resp = req_builder.json(&paper_ids).send().await?;
         match resp.status() {

@@ -9,9 +9,10 @@
 use crate::{
     error::{Error, Result},
     ss::{
-        client::{Method, Query, SemanticScholar, build_request},
+        client::{Query, SemanticScholar},
         graph::BASE_URL,
     },
+    utils::{Method, build_request},
 };
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -74,7 +75,7 @@ impl Query for PaperAutocompleteParam {
 
     async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
         let url = format!("{}/paper/autocomplete", BASE_URL);
-        let req_builder = build_request(client, Method::Get, &url);
+        let req_builder = build_request(client.client(), Method::Get, &url, client.api_key());
         let res = req_builder.query(self).send().await?;
         match res.status() {
             StatusCode::OK => Ok(res.json::<PaperAutocompleteResponse>().await?.matches),

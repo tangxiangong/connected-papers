@@ -1,7 +1,11 @@
 //! Connected Papers Client
 
-use crate::{Error, Method, error::Result};
-use reqwest::{Client, RequestBuilder, StatusCode};
+use crate::{
+    Error,
+    error::Result,
+    utils::{APIKey, Method, build_request},
+};
+use reqwest::{Client, StatusCode};
 use std::time::Duration;
 
 static APP_USER_AGENT: &str =
@@ -47,9 +51,16 @@ impl ConnectedPapers {
         todo!()
     }
 
+    pub(crate) fn api_key(&self) -> Option<APIKey> {
+        self.api_key.as_ref().map(|key| APIKey {
+            header: "X-Api-Key".to_owned(),
+            value: key.to_owned(),
+        })
+    }
+
     pub async fn get_remaining_usages(&self) -> Result<u64> {
         let url = format!("{}/remaining-usages", BASE_URL);
-        let req_builder = self.build_request(Method::Get, &url);
+        let req_builder = build_request(&self.client, Method::Get, &url, self.api_key());
         let resp = req_builder.send().await?;
         match resp.status() {
             StatusCode::OK => {
@@ -63,7 +74,7 @@ impl ConnectedPapers {
 
     pub async fn get_free_access_papers(&self) -> Result<Vec<String>> {
         let url = format!("{}/free-access-papers", BASE_URL);
-        let req_builder = self.build_request(Method::Get, &url);
+        let req_builder = build_request(&self.client, Method::Get, &url, self.api_key());
         let resp = req_builder.send().await?;
         match resp.status() {
             StatusCode::OK => {
@@ -81,17 +92,6 @@ impl ConnectedPapers {
             }
             _ => Err(Error::RequestFailed(resp.text().await?)),
         }
-    }
-
-    fn build_request(&self, method: Method, url: &str) -> RequestBuilder {
-        let mut req_builder = match method {
-            Method::Get => self.client.get(url),
-            Method::Post => self.client.post(url),
-        };
-        if let Some(ref api_key) = self.api_key {
-            req_builder = req_builder.header("X-Api-Key", api_key);
-        }
-        req_builder
     }
 }
 

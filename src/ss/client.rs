@@ -1,7 +1,7 @@
 //! Semantic Scholar Client
 
-use crate::error::Result;
-use reqwest::{Client, RequestBuilder};
+use crate::{error::Result, utils::APIKey};
+use reqwest::Client;
 use std::time::Duration;
 
 static APP_USER_AGENT: &str =
@@ -42,8 +42,11 @@ impl SemanticScholar {
         Ok(Self::with_api_key(&api_key))
     }
 
-    pub(crate) fn api_key(&self) -> Option<&str> {
-        self.api_key.as_deref()
+    pub(crate) fn api_key(&self) -> Option<APIKey> {
+        self.api_key.as_ref().map(|key| APIKey {
+            header: "x-api-key".to_owned(),
+            value: key.to_owned(),
+        })
     }
 
     pub(crate) fn client(&self) -> &Client {
@@ -64,21 +67,4 @@ pub trait Query {
         &self,
         client: &SemanticScholar,
     ) -> impl std::future::Future<Output = Result<Self::Response>> + Send;
-}
-
-pub(crate) fn build_request(client: &SemanticScholar, method: Method, url: &str) -> RequestBuilder {
-    let mut req_builder = match method {
-        Method::Get => client.client().get(url),
-        Method::Post => client.client().post(url),
-    };
-    if let Some(api_key) = client.api_key() {
-        req_builder = req_builder.header("x-api-key", api_key);
-    }
-    req_builder
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum Method {
-    Get,
-    Post,
 }

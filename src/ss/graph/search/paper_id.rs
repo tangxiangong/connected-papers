@@ -10,9 +10,10 @@
 use crate::{
     error::{Error, Result},
     ss::{
-        client::{Method, Query, SemanticScholar, build_request},
+        client::{Query, SemanticScholar},
         graph::{BASE_URL, NestedPaper, PaperField, PaperId, merge_paper_fields},
     },
+    utils::{Method, build_request},
 };
 use reqwest::StatusCode;
 
@@ -63,7 +64,7 @@ impl Query for PaperIdSearchParam {
 
     async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
         let url = format!("{}/paper/{}", BASE_URL, self.query_string());
-        let req_builder = build_request(client, Method::Get, &url);
+        let req_builder = build_request(client.client(), Method::Get, &url, client.api_key());
 
         let resp = req_builder.send().await?;
         match resp.status() {
