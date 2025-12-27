@@ -1,5 +1,6 @@
 //! Semantic Scholar API
 
 pub mod client;
+pub use client::*;
 pub mod graph;
-pub mod recomm;
+pub use graph::*;
