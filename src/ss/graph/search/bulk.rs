@@ -20,7 +20,7 @@
 use crate::{
     error::{Error, Result},
     ss::{
-        client::{Method, Query, S2RequestFailedError, SemanticScholar, build_request},
+        client::{Method, Query, SemanticScholar, build_request},
         graph::{
             _Date, BASE_URL, Date, FieldOfStudy, Paper, PaperField, PublicationType,
             merge_fields_of_study, merge_paper_fields, merge_publication_types,
@@ -305,10 +305,7 @@ impl Query for PaperBulkSearchParam {
         let resp = req_builder.send().await?;
         match resp.status() {
             StatusCode::OK => Ok(resp.json().await?),
-            _ => Err(S2RequestFailedError {
-                error: resp.text().await?,
-            }
-            .into()),
+            _ => Err(Error::RequestFailed(resp.text().await?)),
         }
     }
 }

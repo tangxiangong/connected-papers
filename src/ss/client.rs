@@ -2,7 +2,6 @@
 
 use crate::error::Result;
 use reqwest::{Client, RequestBuilder};
-use serde::Deserialize;
 use std::time::Duration;
 
 static APP_USER_AGENT: &str =
@@ -65,12 +64,6 @@ pub trait Query {
         &self,
         client: &SemanticScholar,
     ) -> impl std::future::Future<Output = Result<Self::Response>> + Send;
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize, thiserror::Error)]
-#[error("{error}")]
-pub struct S2RequestFailedError {
-    pub error: String,
 }
 
 pub(crate) fn build_request(client: &SemanticScholar, method: Method, url: &str) -> RequestBuilder {

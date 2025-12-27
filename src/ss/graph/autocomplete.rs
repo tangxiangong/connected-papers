@@ -7,9 +7,9 @@
 //!
 
 use crate::{
-    error::Result,
+    error::{Error, Result},
     ss::{
-        client::{Method, Query, S2RequestFailedError, SemanticScholar, build_request},
+        client::{Method, Query, SemanticScholar, build_request},
         graph::BASE_URL,
     },
 };
@@ -78,10 +78,7 @@ impl Query for PaperAutocompleteParam {
         let res = req_builder.query(self).send().await?;
         match res.status() {
             StatusCode::OK => Ok(res.json::<PaperAutocompleteResponse>().await?.matches),
-            _ => Err(S2RequestFailedError {
-                error: res.text().await?,
-            }
-            .into()),
+            _ => Err(Error::RequestFailed(res.text().await?)),
         }
     }
 }

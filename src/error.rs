@@ -5,8 +5,8 @@
 pub enum Error {
     #[error(transparent)]
     APIKeyNotFound(#[from] std::env::VarError),
-    #[error(transparent)]
-    SemanticScholarRequestFailed(#[from] crate::ss::client::S2RequestFailedError),
+    #[error("{0}")]
+    RequestFailed(String),
     #[error("{0}")]
     ReqwestError(String),
     #[error("Invalid parameter: {0}")]

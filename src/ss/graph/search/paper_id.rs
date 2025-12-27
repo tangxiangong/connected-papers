@@ -8,9 +8,9 @@
 //! - Can only return up to 10 MB of data at a time.
 
 use crate::{
-    error::Result,
+    error::{Error, Result},
     ss::{
-        client::{Method, Query, S2RequestFailedError, SemanticScholar, build_request},
+        client::{Method, Query, SemanticScholar, build_request},
         graph::{BASE_URL, NestedPaper, PaperField, PaperId, merge_paper_fields},
     },
 };
@@ -69,10 +69,7 @@ impl Query for PaperIdSearchParam {
         match resp.status() {
             StatusCode::OK => Ok(Some(resp.json().await?)),
             StatusCode::NOT_FOUND => Ok(None),
-            _ => Err(S2RequestFailedError {
-                error: resp.text().await?,
-            }
-            .into()),
+            _ => Err(Error::RequestFailed(resp.text().await?)),
         }
     }
 }
