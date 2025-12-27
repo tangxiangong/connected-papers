@@ -9,7 +9,7 @@ static APP_USER_AGENT: &str =
     concat!("RS", env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
 /// Client
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SemanticScholar {
     api_key: Option<String>,
     client: Client,
