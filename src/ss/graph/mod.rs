@@ -6,7 +6,5 @@ pub mod autocomplete;
 pub use autocomplete::*;
 pub mod batch;
 pub use batch::*;
-pub mod models;
-pub use models::*;
 pub mod search;
 pub use search::*;

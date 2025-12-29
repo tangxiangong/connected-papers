@@ -7,13 +7,12 @@
 use crate::{
     error::{Error, Result},
     ss::{
+        _Date, S2Author, CitationStyles, Date, Embedding, ExternalIds, FieldOfStudy, Journal,
+        OpenAccessPdf, PaperField, PublicationType, PublicationVenue, S2FieldsOfStudy,
+        S2NestedPaper, S2Paper,
         client::{Query, SemanticScholar},
-        graph::{
-            _Date, Author, BASE_URL, CitationStyles, Date, Embedding, ExternalIds, FieldOfStudy,
-            Journal, NestedPaper, OpenAccessPdf, Paper, PaperField, PublicationType,
-            PublicationVenue, S2FieldsOfStudy, merge_fields_of_study, merge_paper_fields,
-            merge_publication_types,
-        },
+        graph::BASE_URL,
+        merge_fields_of_study, merge_paper_fields, merge_publication_types,
     },
     utils::{Method, build_request},
 };
@@ -315,7 +314,7 @@ struct PaperTitleSearchResponse {
 #[derive(Debug, Clone)]
 pub struct MatchedPaper {
     pub score: f64,
-    pub paper: NestedPaper,
+    pub paper: S2NestedPaper,
 }
 
 /// Response for the paper search
@@ -364,11 +363,11 @@ struct InnerPaperTitleSearchResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     citation_styles: Option<CitationStyles>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    authors: Option<Vec<Author>>,
+    authors: Option<Vec<S2Author>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    citations: Option<Vec<Paper>>,
+    citations: Option<Vec<S2Paper>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    references: Option<Vec<Paper>>,
+    references: Option<Vec<S2Paper>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     embedding: Option<Embedding>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -379,7 +378,7 @@ impl From<InnerPaperTitleSearchResponse> for MatchedPaper {
     fn from(response: InnerPaperTitleSearchResponse) -> Self {
         MatchedPaper {
             score: response.match_score,
-            paper: NestedPaper {
+            paper: S2NestedPaper {
                 paper_id: response.paper_id,
                 corpus_id: response.corpus_id,
                 external_ids: response.external_ids,

@@ -20,11 +20,10 @@
 use crate::{
     error::{Error, Result},
     ss::{
+        _Date, Date, FieldOfStudy, PaperField, PublicationType, S2Paper,
         client::{Query, SemanticScholar},
-        graph::{
-            _Date, BASE_URL, Date, FieldOfStudy, Paper, PaperField, PublicationType,
-            merge_fields_of_study, merge_paper_fields, merge_publication_types,
-        },
+        graph::BASE_URL,
+        merge_fields_of_study, merge_paper_fields, merge_publication_types,
     },
     utils::{Method, build_request},
 };
@@ -525,7 +524,7 @@ pub struct PaperBulkSearchResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<Vec<Paper>>,
+    pub data: Option<Vec<S2Paper>>,
 }
 
 #[cfg(test)]

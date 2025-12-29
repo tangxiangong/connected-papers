@@ -10,8 +10,10 @@
 use crate::{
     error::{Error, Result},
     ss::{
+        S2NestedPaper, PaperField, PaperId,
         client::{Query, SemanticScholar},
-        graph::{BASE_URL, NestedPaper, PaperField, PaperId, merge_paper_fields},
+        graph::BASE_URL,
+        merge_paper_fields,
     },
     utils::{Method, build_request},
 };
@@ -60,7 +62,7 @@ impl PaperIdSearchParam {
 }
 
 impl Query for PaperIdSearchParam {
-    type Response = Option<NestedPaper>;
+    type Response = Option<S2NestedPaper>;
 
     async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
         let url = format!("{}/paper/{}", BASE_URL, self.query_string());

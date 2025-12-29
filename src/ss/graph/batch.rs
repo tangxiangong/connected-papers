@@ -10,8 +10,10 @@
 use crate::{
     error::{Error, Result},
     ss::{
+        PaperField, PaperId, S2NestedPaper,
         client::{Query, SemanticScholar},
-        graph::{BASE_URL, NestedPaper, PaperField, PaperId, merge_paper_fields},
+        graph::BASE_URL,
+        merge_paper_fields,
     },
     utils::{Method, build_request},
 };
@@ -69,7 +71,7 @@ struct PaperIds {
 }
 
 impl Query for PaperBatchParam {
-    type Response = Vec<NestedPaper>;
+    type Response = Vec<S2NestedPaper>;
 
     async fn query(&self, client: &SemanticScholar) -> Result<Self::Response> {
         let paper_ids = PaperIds {

@@ -11,11 +11,10 @@
 use crate::{
     error::{Error, Result},
     ss::{
+        _Date, Date, FieldOfStudy, S2NestedPaper, PaperField, PublicationType,
         client::{Query, SemanticScholar},
-        graph::{
-            _Date, BASE_URL, Date, FieldOfStudy, NestedPaper, PaperField, PublicationType,
-            merge_fields_of_study, merge_paper_fields, merge_publication_types,
-        },
+        graph::BASE_URL,
+        merge_fields_of_study, merge_paper_fields, merge_publication_types,
     },
     utils::{Method, build_request},
 };
@@ -374,7 +373,7 @@ pub struct PaperSearchResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<Vec<NestedPaper>>,
+    pub data: Option<Vec<S2NestedPaper>>,
 }
 
 #[cfg(test)]

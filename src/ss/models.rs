@@ -274,7 +274,7 @@ pub(crate) fn merge_fields_of_study(fields: &[FieldOfStudy]) -> String {
 /// Inner struct for the paper/batch query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NestedPaper {
+pub struct S2NestedPaper {
     /// Semantic Scholar's primary unique identifier for a paper.
     pub paper_id: String,
     /// Semantic Scholar's secondary unique identifier for a paper.
@@ -351,13 +351,13 @@ pub struct NestedPaper {
     pub citation_styles: Option<CitationStyles>,
     /// Array of authors info.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub authors: Option<Vec<Author>>,
+    pub authors: Option<Vec<S2Author>>,
     /// Array of papers that cite this paper.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub citations: Option<Vec<Paper>>,
+    pub citations: Option<Vec<S2Paper>>,
     /// Array of papers that this paper cites.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub references: Option<Vec<Paper>>,
+    pub references: Option<Vec<S2Paper>>,
     /// Embedding
     #[serde(skip_serializing_if = "Option::is_none")]
     pub embedding: Option<Embedding>,
@@ -400,7 +400,7 @@ pub struct CitationStyles {
 /// Inner struct for the associated paper field in the paper/batch query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Paper {
+pub struct S2Paper {
     /// Semantic Scholar's primary unique identifier for a paper.
     pub paper_id: String,
     /// Semantic Scholar's secondary unique identifier for a paper.
@@ -477,13 +477,13 @@ pub struct Paper {
     pub citation_styles: Option<CitationStyles>,
     /// Array of authors info.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub authors: Option<Vec<Author>>,
+    pub authors: Option<Vec<S2Author>>,
 }
 
 /// Inner struct for the author field in the paper query response
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Author {
+pub struct S2Author {
     /// Semantic Scholar's unique ID for the author.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub author_id: Option<String>,
