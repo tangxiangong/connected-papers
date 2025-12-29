@@ -8,14 +8,30 @@ repository = "https://github.com/tangxiangong/connected-papers"
 license = "MIT or Apache-2.0"
 readme = "README.md"
 
+[package.metadata.docs.rs]
+features = ["stream"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[[bin]]
+name = "connected-papers-mcp"
+path = "src/bin/mcp.rs"
+required-features = ["mcp"]
+
+[features]
+mcp = ["dep:rmcp", "dep:rmcp-macros", "dep:anyhow", "dep:tokio"]
+stream = ["dep:futures", "dep:async-stream", "dep:tokio"]
+
 [dependencies]
-async-stream = "0.3"
+anyhow = { version = "1", optional = true }
+async-stream = { version = "0.3", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
-futures = "0.3"
+futures = { version = "0.3", optional = true }
 reqwest = { version = "0.12", default-features = false, features = [
     "json",
     "rustls-tls",
 ] }
+rmcp = { version = "0.12", optional = true }
+rmcp-macros = { version = "0.12", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
@@ -24,4 +40,12 @@ tokio = { version = "1", features = [
     "rt-multi-thread",
     "time",
     "macros",
-] }
+], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+
+[[example]]
+name = "graph_stream"
+path = "examples/graph_stream.rs"
+required-features = ["stream"]

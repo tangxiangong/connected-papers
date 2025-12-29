@@ -5,12 +5,16 @@ use crate::{
     error::Result,
     utils::{APIKey, Method, build_request},
 };
+#[cfg(feature = "stream")]
 use async_stream::stream;
 use chrono::{NaiveDate, NaiveDateTime};
+#[cfg(feature = "stream")]
 use futures::Stream;
 use reqwest::{Client, StatusCode};
 use serde::Deserialize;
-use std::{collections::HashMap, pin::Pin, time::Duration};
+#[cfg(feature = "stream")]
+use std::pin::Pin;
+use std::{collections::HashMap, time::Duration};
 
 static APP_USER_AGENT: &str =
     concat!("RS", env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
@@ -377,6 +381,8 @@ impl ConnectedPapers {
         }
     }
 
+    #[cfg(feature = "stream")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "stream")))]
     /// Get the graph as a stream, yielding status updates until completion
     ///
     /// This method continuously polls the API and yields `GraphResponse` updates
@@ -388,10 +394,6 @@ impl ConnectedPapers {
     /// * `fresh_only` - If `true`, force a fresh graph rebuild (ignore cached graphs)
     /// * `wait_until_complete` - If `true`, wait until a terminal status is reached
     ///   (FRESH_GRAPH, OLD_GRAPH, or error). If `false`, return immediately with current status.
-    ///
-    /// # Returns
-    ///
-    /// A stream of `GraphResponse` objects with status updates
     pub fn get_graph_stream(
         &self,
         id: &str,
